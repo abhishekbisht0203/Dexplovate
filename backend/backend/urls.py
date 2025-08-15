@@ -5,13 +5,9 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/', include('myapp.urls')),  # Your app URLs
-    # Add other URL patterns here
+    path('', include('myapp.urls')),  # Changed from '/' to ''
 ]
 
-# Serve media files in both development and production
+# Only serve media files in development
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-else:
-    # For production (Render), also serve media files
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
