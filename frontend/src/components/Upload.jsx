@@ -160,13 +160,54 @@ export default function PDFUpload() {
   }
 
   const handlePreview = async (pdf) => {
-    console.log("[v0] Attempting to access PDF:", pdf.file)
+    console.log("[v0] Attempting to view PDF:", pdf.file)
     setError("")
 
     const fileName = pdf.file.split("/").pop() || "Unknown file"
     setCurrentPdfUrl(pdf.file)
     setCurrentPdfName(fileName)
-    setShowUrlHelper(true)
+
+    try {
+      console.log("[v0] Fetching PDF content through API for ID:", pdf.id)
+
+      const response = await axios.get(`${API_BASE_URL}/api/view-pdf/${pdf.id}/`, {
+        responseType: "blob",
+        timeout: 30000,
+        headers: {
+          Accept: "application/pdf",
+        },
+      })
+
+      console.log("[v0] Successfully fetched PDF content via API")
+
+      // Create blob URL for viewing
+      const blob = new Blob([response.data], { type: "application/pdf" })
+      const blobUrl = URL.createObjectURL(blob)
+
+      // Open PDF in new tab using blob URL
+      const newWindow = window.open(blobUrl, "_blank")
+
+      if (!newWindow) {
+        alert("Popup blocked! Please allow popups for this site and try again.")
+      } else {
+        console.log("[v0] PDF opened successfully in new tab using blob URL")
+
+        // Clean up blob URL after a delay
+        setTimeout(() => {
+          URL.revokeObjectURL(blobUrl)
+        }, 60000)
+      }
+    } catch (error) {
+      console.error("[v0] API PDF fetch failed:", error)
+
+      if (error.response?.status === 404) {
+        setShowUrlHelper(true)
+        setError("PDF viewing API endpoint not found. Please add the Django view below to enable PDF viewing.")
+      } else {
+        setShowUrlHelper(true)
+        setError("Failed to load PDF content. Using fallback options.")
+      }
+    }
   }
 
   const handleDelete = async (pdfId) => {
@@ -428,9 +469,9 @@ export default function PDFUpload() {
 
         {showUrlHelper && (
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">Access Your PDF</h3>
+                <h3 className="text-2xl font-bold text-gray-900">PDF Viewing Setup Required</h3>
                 <Button variant="ghost" size="sm" onClick={() => setShowUrlHelper(false)} className="h-8 w-8 p-0">
                   <X className="h-4 w-4" />
                 </Button>
@@ -440,74 +481,90 @@ export default function PDFUpload() {
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertCircle className="h-5 w-5 text-red-600" />
-                    <h4 className="font-semibold text-red-900">Server Issue Detected</h4>
+                    <h4 className="font-semibold text-red-900">Django Backend Configuration Needed</h4>
                   </div>
                   <p className="text-red-800">
-                    Your Django server isn't serving PDF files properly. Use the options below to access your document.
+                    Your Django server needs a PDF viewing API endpoint to serve PDF content properly.
                   </p>
+                </div>
+
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h5 className="font-semibold text-blue-900 mb-3">🔧 Add This Django View to Enable PDF Viewing</h5>
+
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-blue-800 mb-2">
+                        <strong>1. Add to your views.py:</strong>
+                      </p>
+                      <pre className="p-3 bg-white rounded text-xs font-mono border overflow-x-auto">
+                        {`from django.http import HttpResponse, Http404
+from django.views import View
+from .models import YourPDFModel  # Replace with your actual model name
+
+class PDFViewView(View):
+    def get(self, request, pk):
+        try:
+            pdf_obj = YourPDFModel.objects.get(pk=pk)
+            with open(pdf_obj.file.path, 'rb') as pdf_file:
+                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
+                response['Content-Disposition'] = f'inline; filename="{pdf_obj.file.name}"'
+                return response
+        except YourPDFModel.DoesNotExist:
+            raise Http404("PDF not found")
+        except FileNotFoundError:
+            raise Http404("PDF file not found on disk")`}
+                      </pre>
+                    </div>
+
+                    <div>
+                      <p className="text-sm text-blue-800 mb-2">
+                        <strong>2. Add to your urls.py:</strong>
+                      </p>
+                      <pre className="p-3 bg-white rounded text-xs font-mono border overflow-x-auto">
+                        {`from .views import PDFUploadView, PDFDeleteView, PDFViewView
+
+urlpatterns = [
+    path('api/upload-pdf/', PDFUploadView.as_view(), name='upload-pdf'),
+    path('api/delete-pdf/<int:pk>/', PDFDeleteView.as_view(), name='delete-pdf'),
+    path('api/view-pdf/<int:pk>/', PDFViewView.as_view(), name='view-pdf'),  # Add this line
+]`}
+                      </pre>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-2">📄 {currentPdfName}</h4>
-                    <div className="space-y-3">
-                      <Button
-                        onClick={() => handleDownloadPdf(currentPdfUrl, currentPdfName)}
-                        className="w-full justify-start bg-blue-600 hover:bg-blue-700 text-white text-lg py-3"
-                      >
-                        <Upload className="h-5 w-5 mr-3" />
-                        Try Download (May Fail Due to Server)
-                      </Button>
+                    <p className="text-sm text-gray-600 mb-3">Temporary workaround while you set up the Django view:</p>
 
-                      <Button
-                        onClick={() => {
-                          window.open(currentPdfUrl + "?t=" + Date.now(), "_blank")
-                        }}
-                        variant="outline"
-                        className="w-full justify-start border-green-200 text-green-600 hover:bg-green-50"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        Try Direct View (May Fail)
-                      </Button>
+                    <div className="p-3 bg-gray-100 rounded-lg border">
+                      <p className="text-sm text-gray-600 mb-2">Copy this URL and try opening in a new browser tab:</p>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={currentPdfUrl}
+                          readOnly
+                          className="flex-1 p-2 text-sm bg-white border rounded font-mono"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            navigator.clipboard.writeText(currentPdfUrl)
+                            alert("URL copied! Try pasting in a new browser tab.")
+                          }}
+                          className="bg-gray-600 hover:bg-gray-700 text-white"
+                        >
+                          Copy
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="p-3 bg-gray-100 rounded-lg border">
-                    <p className="text-sm text-gray-600 mb-2">Copy URL to try in different browser:</p>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={currentPdfUrl}
-                        readOnly
-                        className="flex-1 p-2 text-sm bg-white border rounded font-mono"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          navigator.clipboard.writeText(currentPdfUrl)
-                          alert("URL copied! Try pasting in a new browser tab.")
-                        }}
-                        className="bg-gray-600 hover:bg-gray-700 text-white"
-                      >
-                        Copy
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h5 className="font-semibold text-blue-900 mb-2">🔧 Django Backend Fix Needed</h5>
-                    <p className="text-sm text-blue-800 mb-2">
-                      To fix this permanently, add this to your Django main urls.py:
-                    </p>
-                    <code className="block p-2 bg-white rounded text-xs font-mono border">
-                      urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-                    </code>
                   </div>
 
                   <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                     <p className="text-sm text-yellow-800">
-                      <strong>💡 Current Status:</strong> Your PDFs are uploaded successfully to the database, but the
-                      Django server can't serve the actual files. The URLs are correct, but return 404 errors.
+                      <strong>💡 Status:</strong> Once you add the Django view above, users will be able to view PDFs
+                      directly in the browser without any server configuration issues.
                     </p>
                   </div>
                 </div>
