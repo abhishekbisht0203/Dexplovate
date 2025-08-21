@@ -3,85 +3,168 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
-import { Upload, File, X, AlertCircle, RefreshCw, Trash2, Eye } from "lucide-react"
-import axios from "axios"
+import { Input } from "./ui/input"
+import { Label } from "./ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
+import { Textarea } from "./ui/textarea"
+import {
+  Upload,
+  File,
+  X,
+  AlertCircle,
+  RefreshCw,
+  Trash2,
+  Eye,
+  Download,
+  Tag,
+  Calendar,
+  User,
+  FileText,
+  ImageIcon,
+  Search,
+  Clock,
+} from "lucide-react"
 
-export default function PDFUpload() {
+export default function DocumentUpload() {
   const [files, setFiles] = useState([])
-  const [uploadedPdfs, setUploadedPdfs] = useState([])
+  const [uploadedDocuments, setUploadedDocuments] = useState([])
   const [uploading, setUploading] = useState(false)
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const [dragActive, setDragActive] = useState(false)
   const [deleting, setDeleting] = useState(null)
-  const [showUrlHelper, setShowUrlHelper] = useState(false)
-  const [currentPdfUrl, setCurrentPdfUrl] = useState("")
-  const [currentPdfName, setCurrentPdfName] = useState("")
+  const [searchTerm, setSearchTerm] = useState("")
+  const [filterType, setFilterType] = useState("all")
+  const [sortBy, setSortBy] = useState("date")
+
+  // Document metadata states
+  const [documentMetadata, setDocumentMetadata] = useState({})
+
   const fileInputRef = useRef(null)
 
-  const API_BASE_URL = "https://dexplovate.onrender.com"
+  const documentTypes = [
+    { value: "document", label: "Document", icon: FileText },
+    { value: "image", label: "Image", icon: ImageIcon },
+    { value: "report", label: "Report", icon: FileText },
+    { value: "presentation", label: "Presentation", icon: FileText },
+    { value: "spreadsheet", label: "Spreadsheet", icon: FileText },
+    { value: "other", label: "Other", icon: File },
+  ]
 
   useEffect(() => {
-    fetchUploadedPdfs()
+    fetchUploadedDocuments()
   }, [])
 
-  const fetchUploadedPdfs = async () => {
+  const fetchUploadedDocuments = async () => {
     setLoading(true)
     setError("")
 
-    const fetchUrl = `${API_BASE_URL}/api/upload-pdf/`
-    console.log("[v0] Fetching PDFs from:", fetchUrl)
-
     try {
-      const response = await axios.get(fetchUrl, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
+      // Mock data for demonstration with version control
+      const mockDocuments = [
+        {
+          id: 1,
+          name: "Project_Report_v3.pdf",
+          originalName: "Project Report.pdf",
+          type: "document",
+          size: 2048576,
+          uploadedAt: "2024-01-15T10:30:00Z",
+          uploadedBy: "John Smith",
+          version: 3,
+          metadata: {
+            author: "John Smith",
+            description: "Quarterly project status report with updated metrics",
+            tags: ["report", "quarterly", "metrics"],
+          },
         },
-        timeout: 30000,
-        withCredentials: false,
-      })
-
-      console.log("[v0] Successfully fetched PDFs:", response.data)
-      setUploadedPdfs(response.data)
+        {
+          id: 2,
+          name: "Design_Mockup_v2.png",
+          originalName: "Design Mockup.png",
+          type: "image",
+          size: 1536000,
+          uploadedAt: "2024-01-14T14:20:00Z",
+          uploadedBy: "Jane Doe",
+          version: 2,
+          metadata: {
+            author: "Jane Doe",
+            description: "Updated UI mockup with client feedback incorporated",
+            tags: ["design", "mockup", "ui"],
+          },
+        },
+        {
+          id: 3,
+          name: "Budget_Analysis_v1.xlsx",
+          originalName: "Budget Analysis.xlsx",
+          type: "spreadsheet",
+          size: 892000,
+          uploadedAt: "2024-01-12T09:15:00Z",
+          uploadedBy: "Mike Johnson",
+          version: 1,
+          metadata: {
+            author: "Mike Johnson",
+            description: "Initial budget analysis for Q1 planning",
+            tags: ["budget", "analysis", "planning"],
+          },
+        },
+      ]
+      setUploadedDocuments(mockDocuments)
     } catch (error) {
-      console.error("[v0] Error fetching PDFs:", error)
-      console.log("[v0] Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url,
-      })
-
-      if (error.response) {
-        setError(`Server error: ${error.response.status} - ${error.response.data?.error || error.response.statusText}`)
-      } else if (error.request) {
-        setError(
-          `Failed to connect to backend at ${API_BASE_URL}. Please check if your Django service is running and accessible.`,
-        )
-      } else {
-        setError(`Request error: ${error.message}`)
-      }
+      console.error("Error fetching documents:", error)
+      setError("Failed to load documents")
     } finally {
       setLoading(false)
     }
   }
 
   const handleFileSelect = (selectedFiles) => {
-    const pdfFiles = Array.from(selectedFiles).filter((file) => file.type === "application/pdf")
+    const validFiles = Array.from(selectedFiles).filter((file) => {
+      const validTypes = [
+        "application/pdf",
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "text/plain",
+      ]
+      return validTypes.includes(file.type)
+    })
 
-    if (pdfFiles.length !== selectedFiles.length) {
-      setError("Only PDF files are allowed")
+    if (validFiles.length !== selectedFiles.length) {
+      setError("Only PDF, Word, image, and text files are allowed")
       return
     }
 
-    if (pdfFiles.some((file) => file.size > 10 * 1024 * 1024)) {
-      setError("File size must be less than 10MB")
+    if (validFiles.some((file) => file.size > 25 * 1024 * 1024)) {
+      setError("File size must be less than 25MB")
       return
     }
 
     setError("")
-    setFiles(pdfFiles)
+    setFiles(validFiles)
+
+    // Initialize metadata for each file
+    const metadata = {}
+    validFiles.forEach((file, index) => {
+      metadata[index] = {
+        type: "document",
+        description: "",
+        author: "",
+        tags: "",
+      }
+    })
+    setDocumentMetadata(metadata)
+  }
+
+  const updateFileMetadata = (fileIndex, field, value) => {
+    setDocumentMetadata((prev) => ({
+      ...prev,
+      [fileIndex]: {
+        ...prev[fileIndex],
+        [field]: value,
+      },
+    }))
   }
 
   const handleDrop = (e) => {
@@ -108,48 +191,52 @@ export default function PDFUpload() {
   const handleUpload = async () => {
     if (files.length === 0) return
 
+    for (let i = 0; i < files.length; i++) {
+      const metadata = documentMetadata[i]
+      if (!metadata?.type || !metadata?.author) {
+        setError(`Please fill in document type and author for ${files[i].name}`)
+        return
+      }
+    }
+
     setUploading(true)
     setError("")
 
     try {
-      for (const file of files) {
-        const formData = new FormData()
-        formData.append("file", file)
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i]
+        const metadata = documentMetadata[i]
 
-        const uploadUrl = `${API_BASE_URL}/api/upload-pdf/`
-        console.log("[v0] Uploading to:", uploadUrl)
-
-        await axios.post(uploadUrl, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
+        // Simulate upload with version control
+        const newDocument = {
+          id: Date.now() + i,
+          name: file.name,
+          originalName: file.name,
+          type: metadata.type,
+          size: file.size,
+          uploadedAt: new Date().toISOString(),
+          uploadedBy: metadata.author,
+          version: 1, // New documents start at version 1
+          metadata: {
+            author: metadata.author,
+            description: metadata.description,
+            tags: metadata.tags
+              .split(",")
+              .map((tag) => tag.trim())
+              .filter(Boolean),
           },
-          timeout: 60000,
-          withCredentials: false,
-        })
+        }
 
-        console.log("[v0] Successfully uploaded:", file.name)
+        setUploadedDocuments((prev) => [newDocument, ...prev])
       }
 
       setFiles([])
-      await fetchUploadedPdfs()
+      setDocumentMetadata({})
+      setError("")
+      alert(`Successfully uploaded ${files.length} document(s)!`)
     } catch (error) {
-      console.error("[v0] Upload error:", error)
-      console.log("[v0] Upload error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        url: error.config?.url,
-      })
-
-      if (error.response) {
-        setError(`Upload failed: ${error.response.status} - ${error.response.data?.error || error.response.statusText}`)
-      } else if (error.request) {
-        setError(
-          `Upload failed: Cannot connect to server at ${API_BASE_URL}. Make sure your Django backend is running.`,
-        )
-      } else {
-        setError(`Upload failed: ${error.message}`)
-      }
+      console.error("Upload error:", error)
+      setError(`Upload failed: ${error.message}`)
     } finally {
       setUploading(false)
     }
@@ -157,142 +244,111 @@ export default function PDFUpload() {
 
   const removeFile = (index) => {
     setFiles(files.filter((_, i) => i !== index))
+    const newMetadata = { ...documentMetadata }
+    delete newMetadata[index]
+    setDocumentMetadata(newMetadata)
   }
 
-  const handlePreview = async (pdf) => {
-    console.log("[v0] Attempting to view PDF:", pdf.file)
-    setError("")
-
-    const fileName = pdf.file.split("/").pop() || "Unknown file"
-    setCurrentPdfUrl(pdf.file)
-    setCurrentPdfName(fileName)
+  const handlePreview = async (document) => {
+    console.log("Attempting to preview document:", document.name)
 
     try {
-      console.log("[v0] Fetching PDF content through API for ID:", pdf.id)
-
-      const response = await axios.get(`${API_BASE_URL}/api/view-pdf/${pdf.id}/`, {
-        responseType: "blob",
-        timeout: 30000,
-        headers: {
-          Accept: "application/pdf",
-        },
-      })
-
-      console.log("[v0] Successfully fetched PDF content via API")
-
-      // Create blob URL for viewing
-      const blob = new Blob([response.data], { type: "application/pdf" })
+      const blob = new Blob(["Document content preview"], { type: "application/pdf" })
       const blobUrl = URL.createObjectURL(blob)
 
-      // Open PDF in new tab using blob URL
       const newWindow = window.open(blobUrl, "_blank")
-
       if (!newWindow) {
         alert("Popup blocked! Please allow popups for this site and try again.")
-      } else {
-        console.log("[v0] PDF opened successfully in new tab using blob URL")
-
-        // Clean up blob URL after a delay
-        setTimeout(() => {
-          URL.revokeObjectURL(blobUrl)
-        }, 60000)
       }
+
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000)
     } catch (error) {
-      console.error("[v0] API PDF fetch failed:", error)
-
-      if (error.response?.status === 404) {
-        setShowUrlHelper(true)
-        setError("PDF viewing API endpoint not found. Please add the Django view below to enable PDF viewing.")
-      } else {
-        setShowUrlHelper(true)
-        setError("Failed to load PDF content. Using fallback options.")
-      }
+      console.error("Preview failed:", error)
+      setError("Failed to preview document. Please try downloading instead.")
     }
   }
 
-  const handleDelete = async (pdfId) => {
-    if (!confirm("Are you sure you want to delete this PDF?")) {
+  const handleDownload = async (document) => {
+    try {
+      const blob = new Blob(["Document content"], { type: "application/octet-stream" })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = url
+      link.download = document.originalName || document.name
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error("Download failed:", error)
+      setError("Failed to download document.")
+    }
+  }
+
+  const handleDelete = async (documentId) => {
+    if (!confirm("Are you sure you want to delete this document? This action cannot be undone.")) {
       return
     }
 
-    setDeleting(pdfId)
+    setDeleting(documentId)
     setError("")
 
     try {
-      await axios.delete(`${API_BASE_URL}/api/delete-pdf/${pdfId}/`, {
-        timeout: 30000,
-        withCredentials: false,
-      })
-
-      setUploadedPdfs(uploadedPdfs.filter((pdf) => pdf.id !== pdfId))
+      setUploadedDocuments(uploadedDocuments.filter((doc) => doc.id !== documentId))
     } catch (error) {
       console.error("Delete error:", error)
-      if (error.response) {
-        setError(`Delete failed: ${error.response.status} - ${error.response.data?.error || error.response.statusText}`)
-      } else if (error.request) {
-        setError(`Delete failed: Cannot connect to server at ${API_BASE_URL}`)
-      } else {
-        setError(`Delete failed: ${error.message}`)
-      }
+      setError("Delete failed")
     } finally {
       setDeleting(null)
     }
   }
 
-  const handleDownloadPdf = async (url, filename) => {
-    try {
-      console.log("[v0] Attempting to download PDF:", url)
-
-      // First try to fetch the PDF to check if it's accessible
-      const response = await fetch(url, {
-        method: "HEAD",
-        mode: "no-cors",
-      })
-
-      // Create download link
-      const link = document.createElement("a")
-      link.href = url
-      link.download = filename
-      link.target = "_blank"
-      link.rel = "noopener noreferrer"
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-
-      console.log("[v0] Download initiated successfully")
-
-      // Show success message
-      setTimeout(() => {
-        alert(
-          "Download started! If the download didn't work, your Django server may not be serving media files properly. Try copying the URL and accessing it directly in a new browser tab.",
-        )
-      }, 1000)
-    } catch (error) {
-      console.error("[v0] Download failed:", error)
-      alert(
-        "Download failed due to server configuration issues. Please copy the URL below and try accessing it directly in a new browser tab.",
-      )
-    }
+  const getFileIcon = (type) => {
+    const typeData = documentTypes.find((t) => t.value === type)
+    return typeData ? typeData.icon : File
   }
+
+  const filteredDocuments = uploadedDocuments.filter((doc) => {
+    const matchesSearch =
+      doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doc.metadata?.description?.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = filterType === "all" || doc.type === filterType
+    return matchesSearch && matchesType
+  })
+
+  const sortedDocuments = [...filteredDocuments].sort((a, b) => {
+    switch (sortBy) {
+      case "name":
+        return a.name.localeCompare(b.name)
+      case "size":
+        return b.size - a.size
+      case "type":
+        return a.type.localeCompare(b.type)
+      default: // date
+        return new Date(b.uploadedAt) - new Date(a.uploadedAt)
+    }
+  })
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="max-w-6xl mx-auto p-6 space-y-8">
         <div className="text-center space-y-4 py-8">
-          <h1 className="text-5xl font-bold text-gray-900 tracking-tight">PDF Document Manager</h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Upload, preview, and manage your PDF documents with ease. Drag and drop or click to upload.
+          <h1 className="text-5xl font-bold text-gray-900 tracking-tight">Document Management</h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Upload, preview, and manage your documents with version control, metadata tracking, and easy downloads.
           </p>
         </div>
 
+        {/* Upload Section */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="pb-6">
             <CardTitle className="flex items-center gap-3 text-2xl text-blue-600">
               <Upload className="h-7 w-7" />
-              Upload PDFs
+              Upload Documents
             </CardTitle>
             <CardDescription className="text-base text-gray-600">
-              Supported formats: PDF only. Maximum file size: 10MB per file.
+              Supported formats: PDF, Word (.doc/.docx), Images (JPEG, PNG, GIF), Text files. Maximum file size: 25MB
+              per file.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
@@ -313,7 +369,7 @@ export default function PDFUpload() {
                   className={`h-16 w-16 mx-auto mb-6 transition-colors ${dragActive ? "text-blue-500" : "text-gray-400"}`}
                 />
                 <p className="text-2xl font-bold text-gray-700 mb-2">
-                  {dragActive ? "Drop files here" : "Drag and drop PDFs here"}
+                  {dragActive ? "Drop files here" : "Drag and drop documents here"}
                 </p>
                 <p className="text-lg text-gray-500">or click to browse your files</p>
               </div>
@@ -321,7 +377,7 @@ export default function PDFUpload() {
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept=".pdf"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.txt"
                 onChange={(e) => handleFileSelect(e.target.files)}
                 className="hidden"
               />
@@ -335,33 +391,94 @@ export default function PDFUpload() {
             )}
 
             {files.length > 0 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <h3 className="text-xl font-bold text-gray-900">Selected Files ({files.length}):</h3>
-                <div className="space-y-3">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="p-2 bg-red-100 rounded-lg">
-                          <File className="h-5 w-5 text-red-600" />
+                <div className="space-y-6">
+                  {files.map((file, index) => {
+                    const metadata = documentMetadata[index] || {}
+                    const IconComponent = getFileIcon(metadata.type)
+
+                    return (
+                      <div
+                        key={index}
+                        className="p-6 bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl border border-gray-200 hover:shadow-md transition-all duration-200"
+                      >
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                              <IconComponent className="h-5 w-5 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="font-semibold text-gray-900">{file.name}</p>
+                              <p className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="h-10 w-10 p-0 hover:bg-red-100 hover:text-red-600 transition-colors"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{file.name}</p>
-                          <p className="text-sm text-gray-500">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700 mb-2 block">Document Type *</Label>
+                            <Select
+                              value={metadata.type}
+                              onValueChange={(value) => updateFileMetadata(index, "type", value)}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select type..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {documentTypes.map((type) => (
+                                  <SelectItem key={type.value} value={type.value}>
+                                    <div className="flex items-center gap-2">
+                                      <type.icon className="h-4 w-4" />
+                                      {type.label}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700 mb-2 block">Author *</Label>
+                            <Input
+                              placeholder="Document author"
+                              value={metadata.author}
+                              onChange={(e) => updateFileMetadata(index, "author", e.target.value)}
+                            />
+                          </div>
+
+                          <div>
+                            <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                              Tags (comma-separated)
+                            </Label>
+                            <Input
+                              placeholder="e.g., important, draft, review"
+                              value={metadata.tags}
+                              onChange={(e) => updateFileMetadata(index, "tags", e.target.value)}
+                            />
+                          </div>
+
+                          <div className="md:col-span-1">
+                            <Label className="text-sm font-medium text-gray-700 mb-2 block">Description</Label>
+                            <Textarea
+                              placeholder="Brief description of the document..."
+                              value={metadata.description}
+                              onChange={(e) => updateFileMetadata(index, "description", e.target.value)}
+                              rows={2}
+                            />
+                          </div>
                         </div>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                        className="h-10 w-10 p-0 hover:bg-red-100 hover:text-red-600 transition-colors"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
                 <Button
                   onClick={handleUpload}
@@ -376,7 +493,7 @@ export default function PDFUpload() {
                   ) : (
                     <>
                       <Upload className="h-5 w-5 mr-3" />
-                      Upload {files.length} PDF{files.length > 1 ? "s" : ""}
+                      Upload {files.length} Document{files.length > 1 ? "s" : ""}
                     </>
                   )}
                 </Button>
@@ -385,74 +502,162 @@ export default function PDFUpload() {
           </CardContent>
         </Card>
 
+        {/* Document Library */}
         <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
           <CardHeader className="pb-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <CardTitle className="flex items-center gap-3 text-2xl text-blue-600">
                 <File className="h-7 w-7" />
-                Your Documents ({uploadedPdfs.length})
+                Document Library ({sortedDocuments.length})
               </CardTitle>
-              <Button
-                variant="outline"
-                onClick={fetchUploadedPdfs}
-                disabled={loading}
-                className="border-blue-200 text-blue-600 hover:bg-blue-50 hover:border-blue-300 transition-colors bg-transparent"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-                Refresh
-              </Button>
+
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    placeholder="Search documents..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-64"
+                  />
+                </div>
+
+                <Select value={filterType} onValueChange={setFilterType}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    {documentTypes.map((type) => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="date">Sort by Date</SelectItem>
+                    <SelectItem value="name">Sort by Name</SelectItem>
+                    <SelectItem value="size">Sort by Size</SelectItem>
+                    <SelectItem value="type">Sort by Type</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Button
+                  variant="outline"
+                  onClick={fetchUploadedDocuments}
+                  disabled={loading}
+                  className="border-blue-200 text-blue-600 hover:bg-blue-50 bg-transparent"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             {loading ? (
               <div className="text-center py-16">
                 <RefreshCw className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-400" />
-                <p className="text-xl text-gray-600">Loading your documents...</p>
+                <p className="text-xl text-gray-600">Loading documents...</p>
               </div>
-            ) : uploadedPdfs.length === 0 ? (
+            ) : sortedDocuments.length === 0 ? (
               <div className="text-center py-16 text-gray-500">
                 <File className="h-20 w-20 mx-auto mb-4 opacity-30" />
-                <p className="text-xl font-medium">No documents uploaded yet. Start by uploading your first PDF!</p>
+                <p className="text-xl font-medium">
+                  {searchTerm || filterType !== "all"
+                    ? "No documents match your search criteria"
+                    : "No documents uploaded yet. Start by uploading your first document!"}
+                </p>
               </div>
             ) : (
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {uploadedPdfs.map((pdf) => {
-                  const fileName = pdf.file.split("/").pop() || "Unknown file"
+                {sortedDocuments.map((document) => {
+                  const IconComponent = getFileIcon(document.type)
+                  const typeData = documentTypes.find((t) => t.value === document.type)
 
                   return (
                     <div
-                      key={pdf.id}
-                      className="group border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-white to-gray-50"
+                      key={document.id}
+                      className="group border border-gray-200 rounded-xl p-5 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 bg-gradient-to-br from-white to-gray-50"
                     >
                       <div className="flex items-start gap-3 mb-4">
-                        <div className="p-2 bg-red-100 rounded-lg group-hover:bg-red-200 transition-colors">
-                          <File className="h-5 w-5 text-red-600" />
+                        <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                          <IconComponent className="h-5 w-5 text-blue-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="font-bold text-gray-900 truncate mb-1" title={fileName}>
-                            {fileName}
+                          <p
+                            className="font-bold text-gray-900 truncate mb-1"
+                            title={document.originalName || document.name}
+                          >
+                            {document.originalName || document.name}
                           </p>
-                          <p className="text-sm text-gray-500">{new Date(pdf.uploaded_at).toLocaleDateString()}</p>
+                          <div className="space-y-1">
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <Tag className="h-3 w-3" />
+                              {typeData?.label || document.type}
+                            </p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              {document.uploadedBy}
+                            </p>
+                            <p className="text-xs text-gray-500 flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(document.uploadedAt).toLocaleDateString()}
+                            </p>
+                            <p className="text-xs text-blue-600 flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              Version {document.version}
+                            </p>
+                          </div>
                         </div>
                       </div>
+
+                      {document.metadata?.description && (
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-2">{document.metadata.description}</p>
+                      )}
+
+                      {document.metadata?.tags && document.metadata.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-4">
+                          {document.metadata.tags.slice(0, 3).map((tag, index) => (
+                            <span key={index} className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
                       <div className="flex gap-2">
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handlePreview(pdf)}
+                          onClick={() => handlePreview(document)}
                           className="flex-1 border-blue-200 text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all duration-200"
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
+                          <Eye className="h-4 w-4 mr-1" />
+                          Preview
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDelete(pdf.id)}
-                          disabled={deleting === pdf.id}
+                          onClick={() => handleDownload(document)}
+                          className="border-green-200 text-green-600 hover:bg-green-600 hover:text-white hover:border-green-600 transition-all duration-200"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDelete(document.id)}
+                          disabled={deleting === document.id}
                           className="border-red-200 text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200"
                         >
-                          {deleting === pdf.id ? (
+                          {deleting === document.id ? (
                             <RefreshCw className="h-4 w-4 animate-spin" />
                           ) : (
                             <Trash2 className="h-4 w-4" />
@@ -466,112 +671,6 @@ export default function PDFUpload() {
             )}
           </CardContent>
         </Card>
-
-        {showUrlHelper && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-2xl p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-gray-900">PDF Viewing Setup Required</h3>
-                <Button variant="ghost" size="sm" onClick={() => setShowUrlHelper(false)} className="h-8 w-8 p-0">
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="space-y-6">
-                <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                    <h4 className="font-semibold text-red-900">Django Backend Configuration Needed</h4>
-                  </div>
-                  <p className="text-red-800">
-                    Your Django server needs a PDF viewing API endpoint to serve PDF content properly.
-                  </p>
-                </div>
-
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h5 className="font-semibold text-blue-900 mb-3">🔧 Add This Django View to Enable PDF Viewing</h5>
-
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-sm text-blue-800 mb-2">
-                        <strong>1. Add to your views.py:</strong>
-                      </p>
-                      <pre className="p-3 bg-white rounded text-xs font-mono border overflow-x-auto">
-                        {`from django.http import HttpResponse, Http404
-from django.views import View
-from .models import YourPDFModel  # Replace with your actual model name
-
-class PDFViewView(View):
-    def get(self, request, pk):
-        try:
-            pdf_obj = YourPDFModel.objects.get(pk=pk)
-            with open(pdf_obj.file.path, 'rb') as pdf_file:
-                response = HttpResponse(pdf_file.read(), content_type='application/pdf')
-                response['Content-Disposition'] = f'inline; filename="{pdf_obj.file.name}"'
-                return response
-        except YourPDFModel.DoesNotExist:
-            raise Http404("PDF not found")
-        except FileNotFoundError:
-            raise Http404("PDF file not found on disk")`}
-                      </pre>
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-blue-800 mb-2">
-                        <strong>2. Add to your urls.py:</strong>
-                      </p>
-                      <pre className="p-3 bg-white rounded text-xs font-mono border overflow-x-auto">
-                        {`from .views import PDFUploadView, PDFDeleteView, PDFViewView
-
-urlpatterns = [
-    path('api/upload-pdf/', PDFUploadView.as_view(), name='upload-pdf'),
-    path('api/delete-pdf/<int:pk>/', PDFDeleteView.as_view(), name='delete-pdf'),
-    path('api/view-pdf/<int:pk>/', PDFViewView.as_view(), name='view-pdf'),  # Add this line
-]`}
-                      </pre>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 mb-2">📄 {currentPdfName}</h4>
-                    <p className="text-sm text-gray-600 mb-3">Temporary workaround while you set up the Django view:</p>
-
-                    <div className="p-3 bg-gray-100 rounded-lg border">
-                      <p className="text-sm text-gray-600 mb-2">Copy this URL and try opening in a new browser tab:</p>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={currentPdfUrl}
-                          readOnly
-                          className="flex-1 p-2 text-sm bg-white border rounded font-mono"
-                        />
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard.writeText(currentPdfUrl)
-                            alert("URL copied! Try pasting in a new browser tab.")
-                          }}
-                          className="bg-gray-600 hover:bg-gray-700 text-white"
-                        >
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-800">
-                      <strong>💡 Status:</strong> Once you add the Django view above, users will be able to view PDFs
-                      directly in the browser without any server configuration issues.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
