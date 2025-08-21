@@ -9,13 +9,13 @@ function App() {
       <div>
         {/* Navigation */}
         <nav className="p-4 bg-gray-200 flex gap-4">
-          <Link to="/upload">Upload</Link>
+          <Link to="/">Upload</Link>
           <Link to="/register">Register</Link>
         </nav>
 
         {/* Routes */}
         <Routes>
-          <Route path="/upload" element={<FileUploadPage />} />
+          <Route path="/" element={<FileUploadPage />} />
           <Route path="/register" element={<Register />} />
         </Routes>
       </div>
